@@ -28,7 +28,11 @@ File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
 
   # --- 蔵書情報テーブル ---
   table = doc.at('table.bookInfo')
-  next unless table
+
+  unless table
+    STDERR.puts "Cannot find 'table.bookInfo' at line ##{line_number} in #{url.ljust(40)}"
+    exit
+  end
 
   puts title
   table.search('tr').each do |tr|
