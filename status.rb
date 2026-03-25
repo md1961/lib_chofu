@@ -7,6 +7,8 @@ INDEX_NAME = 1
 INDEX_STATUS = 2
 INDEX_CALL_NUMBER = 4
 
+MATCH_PATTERN_TO_SKIP_LINE_FOR_URL = /\A#/
+
 MATCH_WORD_FOR_HEADING_ROW = '状態'
 MATCH_WORD_FOR_OUT_OF_STOCK = '貸出中'
 
@@ -25,6 +27,8 @@ agent.get('https://www.lib.city.chofu.tokyo.jp/')
 agent.get('https://www.lib.city.chofu.tokyo.jp/totalresult') # ダミー遷移（必要な場合）
 
 File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
+  next if line.match(MATCH_PATTERN_TO_SKIP_LINE_FOR_URL)
+
   url = line.sub(/\A.*http/, 'http')
 
   begin
