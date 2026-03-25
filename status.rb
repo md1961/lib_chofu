@@ -1,10 +1,22 @@
 require 'mechanize'
+require "optparse"
 
 FILENAME_URL_LIST = 'urls.txt'
 
 INDEX_NAME = 1
 INDEX_STATUS = 2
 INDEX_CALL_NUMBER = 4
+
+MATCH_WORD_FOR_HEADING_ROW = '状態'
+MATCH_WORD_FOR_OUT_OF_STOCK = '貸出中'
+
+
+lists_in_stock_only = true
+
+opts = OptionParser.new
+opts.on('-a', '--all', "list all including out of stock") { |v| lists_in_stock_only = false }
+opts.parse!(ARGV)
+
 
 agent = Mechanize.new
 agent.user_agent_alias = 'Windows Chrome'
@@ -40,9 +52,13 @@ File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
       td.text.strip
     }.values_at(INDEX_NAME, INDEX_STATUS, INDEX_CALL_NUMBER)
 
-    next if status.match('状態')
-    next unless status.match('在庫')
+    next if status.match(MATCH_WORD_FOR_HEADING_ROW)  # 見出し行をスキップ
 
-    printf("  %s: %s\n", name + (name.length == 2 ? '　' : ''), call_number)
+    is_out_of_stock = status.match(MATCH_WORD_FOR_OUT_OF_STOCK)
+    next if lists_in_stock_only && is_out_of_stock
+
+    name_display = name + (name.length == 2 ? '　' : '')
+    call_number_display = is_out_of_stock ? '×' : call_number
+    printf("  %s: %s\n", name_display, call_number_display)
   end
 end
