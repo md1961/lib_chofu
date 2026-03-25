@@ -12,10 +12,16 @@ agent.user_agent_alias = 'Windows Chrome'
 agent.get('https://www.lib.city.chofu.tokyo.jp/')
 agent.get('https://www.lib.city.chofu.tokyo.jp/totalresult') # ダミー遷移（必要な場合）
 
-File.open(FILENAME_URL_LIST, 'r').each_line do |line|
+File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
   url = line.sub(/\A.*http/, 'http')
 
-  page = agent.get(url) rescue next
+  begin
+    page = agent.get(url)
+  rescue OpenSSL::SSL::SSLError
+    STDERR.puts "Cannot open page at line ##{line_number} in #{url.ljust(40)}"
+    exit
+  end
+
   doc = page.parser
 
   title = doc.at('h2')&.text&.strip
