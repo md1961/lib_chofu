@@ -21,6 +21,18 @@ class Library
   end
 end
 
+class LibraryNumber
+  def initialize(name, value, unit)
+    @name = name
+    @value = value
+    @unit = unit
+  end
+
+  def to_s
+    "#{@name} #{@value}#{@unit}"
+  end
+end
+
 class BookInfo
   attr_reader :call_number
 
@@ -77,6 +89,23 @@ class BookInfoPage
 
   def book_title
     @nokogiri_doc.at('h2')&.text&.strip
+  end
+
+  def library_numbers
+    dl = @nokogiri_doc.at('div.number dl')
+
+    dl.css('dt').each_with_index.map { |dt, i|
+      dd = dl.css('dd')[i]
+      next unless dd
+
+      name = dt.text.strip
+      content = dd.text.strip.gsub(/\s+/, '')
+
+      value = content[/\d+/]&.to_i
+      unit = content.gsub(/\d+/, '')
+
+      LibraryNumber.new(name, value, unit)
+    }.compact
   end
 
   INDEX_NAME = 1
@@ -145,6 +174,8 @@ url_reader.each_page do |page|
   end
 
   puts page.book_title
+
+  puts "（#{page.library_numbers.join('、')}）"
 
   page.each_library do |library|
     library_name = library.name
