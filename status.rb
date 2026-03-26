@@ -13,12 +13,28 @@ class LibraryPageAgent
 end
 
 class BookInfoPage
-  attr_reader :nokogiri_doc, :url, :line_number_in_url_file
+  attr_reader :url, :line_number_in_url_file
 
   def initialize(mechanize_page, url, line_number_in_url_file)
     @nokogiri_doc = mechanize_page&.parser
     @url = url
     @line_number_in_url_file = line_number_in_url_file
+  end
+
+  def invalid_url?
+    @nokogiri_doc.nil?
+  end
+
+  def no_book_info_table?
+    book_info_table.nil?
+  end
+
+  def book_title
+    @nokogiri_doc.at('h2')&.text&.strip
+  end
+
+  def book_info_table
+    @nokogiri_doc.at('table.bookInfo')
   end
 end
 
@@ -67,9 +83,7 @@ agent = LibraryPageAgent.new.agent
 url_reader = UrlReader.new(agent)
 
 url_reader.each_page do |page|
-  doc = page.nokogiri_doc
-
-  unless doc
+  if page.invalid_url?
     line_number = page.line_number_in_url_file
     url = page.url
 
@@ -77,12 +91,7 @@ url_reader.each_page do |page|
     exit
   end
 
-  book_title = doc.at('h2')&.text&.strip
-
-  # --- 蔵書情報テーブル ---
-  table = doc.at('table.bookInfo')
-
-  unless table
+  if page.no_book_info_table?
     line_number = page.line_number_in_url_file
     url = page.url
 
@@ -90,9 +99,9 @@ url_reader.each_page do |page|
     exit
   end
 
-  puts book_title
+  puts page.book_title
 
-  table.at('tbody').search('tr').each do |tr|
+  page.book_info_table.at('tbody').search('tr').each do |tr|
     name, status, call_number = tr.search('th, td').map { |td|
       td.text.strip
     }.values_at(INDEX_NAME, INDEX_STATUS, INDEX_CALL_NUMBER)
