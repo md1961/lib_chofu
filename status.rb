@@ -12,6 +12,21 @@ class LibraryPageAgent
   end
 end
 
+class BookInfo
+  attr_reader :call_number
+
+  MATCH_WORD_FOR_OUT_OF_STOCK = '貸出中'
+
+  def initialize(status_desc, call_number)
+    @status_desc = status_desc
+    @call_number = call_number
+  end
+
+  def out_of_stock?
+    @status_desc.match(MATCH_WORD_FOR_OUT_OF_STOCK)
+  end
+end
+
 class BookInfoPage
   attr_reader :url, :line_number_in_url_file
 
@@ -70,8 +85,6 @@ INDEX_NAME = 1
 INDEX_STATUS = 2
 INDEX_CALL_NUMBER = 4
 
-MATCH_WORD_FOR_OUT_OF_STOCK = '貸出中'
-
 
 lists_in_stock_only = true
 
@@ -106,11 +119,12 @@ url_reader.each_page do |page|
       td.text.strip
     }.values_at(INDEX_NAME, INDEX_STATUS, INDEX_CALL_NUMBER)
 
-    is_out_of_stock = status.match(MATCH_WORD_FOR_OUT_OF_STOCK)
-    next if lists_in_stock_only && is_out_of_stock
+    book_info = BookInfo.new(status, call_number)
+
+    next if lists_in_stock_only && book_info.out_of_stock?
 
     name_display = name + (name.length == 2 ? '　' : '')
-    call_number_display = is_out_of_stock ? '×' : call_number
+    call_number_display = book_info.out_of_stock? ? '×' : book_info.call_number
     printf("  %s: %s\n", name_display, call_number_display)
   end
 end
