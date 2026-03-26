@@ -45,6 +45,28 @@ class BookInfoPage
     @line_number_in_url_file = line_number_in_url_file
   end
 
+  def error?
+    url_display = url.length > 40 ? "#{url.slice(0, 40)}..." : url
+
+    if invalid_url?
+      @error_message = "Cannot open page at line ##{line_number_in_url_file} in #{url_display}"
+
+      return true
+    elsif no_book_info_table?
+      @error_message = "Cannot find 'table.bookInfo' at line ##{line_number_in_url_file} in #{url_display}"
+
+      return true
+    end
+
+    false
+  end
+
+  def error_message
+    raise Error, "#error?() must be true to call #error_message()" unless @error_message
+
+    @error_message
+  end
+
   def invalid_url?
     @nokogiri_doc.nil?
   end
@@ -90,10 +112,10 @@ class UrlReader
     File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
       next if line.match(MATCH_PATTERN_TO_SKIP_LINE_FOR_URL)
 
-      url = line.sub(/\A.*http/, 'http')
+      url = line.sub(/\A.*http/, 'http').chomp
       mechanize_page = begin
                          @agent.get(url)
-                       rescue OpenSSL::SSL::SSLError
+                       rescue OpenSSL::SSL::SSLError, Mechanize::ResponseCodeError
                          nil
                        end
 
@@ -117,19 +139,8 @@ agent = LibraryPageAgent.new.agent
 url_reader = UrlReader.new(agent)
 
 url_reader.each_page do |page|
-  if page.invalid_url?
-    line_number = page.line_number_in_url_file
-    url = page.url
-
-    STDERR.puts "Cannot open page at line ##{line_number} in #{url.ljust(40)}..."
-    exit
-  end
-
-  if page.no_book_info_table?
-    line_number = page.line_number_in_url_file
-    url = page.url
-
-    STDERR.puts "Cannot find 'table.bookInfo' at line ##{line_number} in #{url.ljust(40)}..."
+  if page.error?
+    STDERR.puts page.error_message
     exit
   end
 
