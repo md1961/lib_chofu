@@ -9,7 +9,6 @@ INDEX_CALL_NUMBER = 4
 
 MATCH_PATTERN_TO_SKIP_LINE_FOR_URL = /\A#/
 
-MATCH_WORD_FOR_HEADING_ROW = '状態'
 MATCH_WORD_FOR_OUT_OF_STOCK = '貸出中'
 
 
@@ -40,7 +39,7 @@ File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
 
   doc = page.parser
 
-  title = doc.at('h2')&.text&.strip
+  book_title = doc.at('h2')&.text&.strip
 
   # --- 蔵書情報テーブル ---
   table = doc.at('table.bookInfo')
@@ -50,13 +49,12 @@ File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
     exit
   end
 
-  puts title
-  table.search('tr').each do |tr|
+  puts book_title
+
+  table.at('tbody').search('tr').each do |tr|
     name, status, call_number = tr.search('th, td').map { |td|
       td.text.strip
     }.values_at(INDEX_NAME, INDEX_STATUS, INDEX_CALL_NUMBER)
-
-    next if status.match(MATCH_WORD_FOR_HEADING_ROW)  # 見出し行をスキップ
 
     is_out_of_stock = status.match(MATCH_WORD_FOR_OUT_OF_STOCK)
     next if lists_in_stock_only && is_out_of_stock
