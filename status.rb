@@ -12,17 +12,47 @@ class LibraryPageAgent
   end
 end
 
+class BookInfoPage
+  attr_reader :nokogiri_doc, :url, :line_number_in_file
+
+  def initialize(mechanize_page, url, line_number_in_file)
+    @nokogiri_doc = mechanize_page&.parser
+    @url = url
+    @line_number_in_file = line_number_in_file
+  end
+end
+
+class UrlReader
+  FILENAME_URL_LIST = 'urls.txt'
+  MATCH_PATTERN_TO_SKIP_LINE_FOR_URL = /\A#/
+
+  def initialize(library_page_agent)
+    @agent = library_page_agent
+  end
+
+  def each_page
+    File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
+      next if line.match(MATCH_PATTERN_TO_SKIP_LINE_FOR_URL)
+
+      url = line.sub(/\A.*http/, 'http')
+      mechanize_page = begin
+                         @agent.get(url)
+                       rescue OpenSSL::SSL::SSLError
+                         nil
+                       end
+
+      yield BookInfoPage.new(mechanize_page, url, line_number)
+    end
+  end
+end
+
 
 require 'mechanize'
 require "optparse"
 
-FILENAME_URL_LIST = 'urls.txt'
-
 INDEX_NAME = 1
 INDEX_STATUS = 2
 INDEX_CALL_NUMBER = 4
-
-MATCH_PATTERN_TO_SKIP_LINE_FOR_URL = /\A#/
 
 MATCH_WORD_FOR_OUT_OF_STOCK = '貸出中'
 
@@ -34,20 +64,18 @@ opts.on('-a', '--all', "list all including out of stock") { |v| lists_in_stock_o
 opts.parse!(ARGV)
 
 agent = LibraryPageAgent.new.agent
+url_reader = UrlReader.new(agent)
 
-File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
-  next if line.match(MATCH_PATTERN_TO_SKIP_LINE_FOR_URL)
+url_reader.each_page do |page|
+  doc = page.nokogiri_doc
 
-  url = line.sub(/\A.*http/, 'http')
+  unless doc
+    line_number = page.line_number_in_file
+    url = page.url
 
-  begin
-    page = agent.get(url)
-  rescue OpenSSL::SSL::SSLError
-    STDERR.puts "Cannot open page at line ##{line_number} in #{url.ljust(40)}"
+    STDERR.puts "Cannot open page at line ##{line_number} in #{url.ljust(40)}..."
     exit
   end
-
-  doc = page.parser
 
   book_title = doc.at('h2')&.text&.strip
 
@@ -55,7 +83,10 @@ File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
   table = doc.at('table.bookInfo')
 
   unless table
-    STDERR.puts "Cannot find 'table.bookInfo' at line ##{line_number} in #{url.ljust(40)}"
+    line_number = page.line_number_in_file
+    url = page.url
+
+    STDERR.puts "Cannot find 'table.bookInfo' at line ##{line_number} in #{url.ljust(40)}..."
     exit
   end
 
