@@ -12,6 +12,15 @@ class LibraryPageAgent
   end
 end
 
+class Library
+  attr_reader :name, :book_info
+
+  def initialize(name, book_info)
+    @name = name
+    @book_info = book_info
+  end
+end
+
 class BookInfo
   attr_reader :call_number
 
@@ -48,6 +57,22 @@ class BookInfoPage
     @nokogiri_doc.at('h2')&.text&.strip
   end
 
+  INDEX_NAME = 1
+  INDEX_STATUS = 2
+  INDEX_CALL_NUMBER = 4
+
+  def each_library
+    book_info_table.at('tbody').search('tr').each do |tr|
+      name, status, call_number = tr.search('th, td').map { |td|
+        td.text.strip
+      }.values_at(INDEX_NAME, INDEX_STATUS, INDEX_CALL_NUMBER)
+
+      book_info = BookInfo.new(status, call_number)
+
+      yield Library.new(name, book_info)
+    end
+  end
+
   def book_info_table
     @nokogiri_doc.at('table.bookInfo')
   end
@@ -81,10 +106,6 @@ end
 require 'mechanize'
 require "optparse"
 
-INDEX_NAME = 1
-INDEX_STATUS = 2
-INDEX_CALL_NUMBER = 4
-
 
 lists_in_stock_only = true
 
@@ -114,17 +135,14 @@ url_reader.each_page do |page|
 
   puts page.book_title
 
-  page.book_info_table.at('tbody').search('tr').each do |tr|
-    name, status, call_number = tr.search('th, td').map { |td|
-      td.text.strip
-    }.values_at(INDEX_NAME, INDEX_STATUS, INDEX_CALL_NUMBER)
-
-    book_info = BookInfo.new(status, call_number)
+  page.each_library do |library|
+    library_name = library.name
+    book_info = library.book_info
 
     next if lists_in_stock_only && book_info.out_of_stock?
 
-    name_display = name + (name.length == 2 ? '　' : '')
+    library_name_display = library_name + (library_name.length == 2 ? '　' : '')
     call_number_display = book_info.out_of_stock? ? '×' : book_info.call_number
-    printf("  %s: %s\n", name_display, call_number_display)
+    printf("  %s: %s\n", library_name_display, call_number_display)
   end
 end
