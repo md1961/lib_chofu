@@ -1,3 +1,18 @@
+class LibraryPageAgent
+  attr_reader :agent
+
+  TOP_PAGE_URL = 'https://www.lib.city.chofu.tokyo.jp/'
+
+  def initialize
+    @agent = Mechanize.new
+    @agent.user_agent_alias = 'Windows Chrome'
+
+    @agent.get(TOP_PAGE_URL)
+    @agent.get(TOP_PAGE_URL + '/totalresult') # ダミー遷移（必要な場合）
+  end
+end
+
+
 require 'mechanize'
 require "optparse"
 
@@ -18,12 +33,7 @@ opts = OptionParser.new
 opts.on('-a', '--all', "list all including out of stock") { |v| lists_in_stock_only = false }
 opts.parse!(ARGV)
 
-
-agent = Mechanize.new
-agent.user_agent_alias = 'Windows Chrome'
-
-agent.get('https://www.lib.city.chofu.tokyo.jp/')
-agent.get('https://www.lib.city.chofu.tokyo.jp/totalresult') # ダミー遷移（必要な場合）
+agent = LibraryPageAgent.new.agent
 
 File.open(FILENAME_URL_LIST, 'r').each_line.with_index(1) do |line, line_number|
   next if line.match(MATCH_PATTERN_TO_SKIP_LINE_FOR_URL)
