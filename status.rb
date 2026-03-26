@@ -13,12 +13,12 @@ class LibraryPageAgent
 end
 
 class BookInfoPage
-  attr_reader :nokogiri_doc, :url, :line_number_in_file
+  attr_reader :nokogiri_doc, :url, :line_number_in_url_file
 
-  def initialize(mechanize_page, url, line_number_in_file)
+  def initialize(mechanize_page, url, line_number_in_url_file)
     @nokogiri_doc = mechanize_page&.parser
     @url = url
-    @line_number_in_file = line_number_in_file
+    @line_number_in_url_file = line_number_in_url_file
   end
 end
 
@@ -70,7 +70,7 @@ url_reader.each_page do |page|
   doc = page.nokogiri_doc
 
   unless doc
-    line_number = page.line_number_in_file
+    line_number = page.line_number_in_url_file
     url = page.url
 
     STDERR.puts "Cannot open page at line ##{line_number} in #{url.ljust(40)}..."
@@ -83,7 +83,7 @@ url_reader.each_page do |page|
   table = doc.at('table.bookInfo')
 
   unless table
-    line_number = page.line_number_in_file
+    line_number = page.line_number_in_url_file
     url = page.url
 
     STDERR.puts "Cannot find 'table.bookInfo' at line ##{line_number} in #{url.ljust(40)}..."
