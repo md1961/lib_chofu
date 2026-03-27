@@ -159,9 +159,11 @@ require "optparse"
 
 
 lists_in_stock_only = true
+displays_library_numbers = false
 
 opts = OptionParser.new
 opts.on('-a', '--all', "list all including out of stock") { |v| lists_in_stock_only = false }
+opts.on('-n', '--num', "display numbers for whole libraries") { |v| displays_library_numbers = true }
 opts.parse!(ARGV)
 
 agent = LibraryPageAgent.new.agent
@@ -175,7 +177,9 @@ url_reader.each_page do |page|
 
   puts page.book_title
 
-  puts "（#{page.library_numbers.join('、')}）"
+  if displays_library_numbers
+    puts "（#{page.library_numbers.join('、')}）"
+  end
 
   page.each_library do |library|
     library_name = library.name
